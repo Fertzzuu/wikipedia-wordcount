@@ -1,0 +1,27 @@
+
+# Python
+__pycache__/
+.ruff_cache
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Venvs
+venv/
+
+# VCS
+.git/
+.gitignore
+
+# IDEs
+.idea/
+.vscode/
+
+# Mac/OS
+.DS_Store
+
+# Tests/artifacts
+.coverage
+htmlcov/
+.pytest_cache/
