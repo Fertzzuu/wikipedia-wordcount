@@ -36,12 +36,14 @@ async def on_startup() -> None:
     _async_client = httpx.AsyncClient(timeout=HTTP_TIMEOUT_SECONDS)
     _request_semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
-    set_wiki_client(WikiClient(
-        client=_async_client,
-        semaphore=_request_semaphore,
-        user_agent=USER_AGENT,
-        timeout=HTTP_TIMEOUT_SECONDS,
-    ))
+    set_wiki_client(
+        WikiClient(
+            client=_async_client,
+            semaphore=_request_semaphore,
+            user_agent=USER_AGENT,
+            timeout=HTTP_TIMEOUT_SECONDS,
+        )
+    )
 
     logger.info("Startup complete: httpx client + WikiClient initialized.")
 
@@ -60,19 +62,6 @@ async def on_shutdown() -> None:
     logger.info("Shutdown complete: httpx client closed.")
 
 
-def get_wiki_client() -> WikiClient:
-    """
-    Dependency provider for routes/services.
-    FastAPI will call this when a handler declares:
-      wiki_client: WikiClient = Depends(get_wiki_client)
-    """
-    if _wiki_client is None:
-        # Shouldn’t happen in normal operation; protects tests/misconfig.
-        raise RuntimeError("WikiClient is not initialized yet (startup not run).")
-    return _wiki_client
-
-
-# Optional: a simple health endpoint
 @app.get("/")
 async def healthcheck() -> dict:
     return {"status": "ok"}
@@ -80,13 +69,3 @@ async def healthcheck() -> dict:
 
 # Mount your API routes
 app.include_router(api_router)
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
-

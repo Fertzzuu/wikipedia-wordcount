@@ -5,18 +5,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 
 def vectorize_counts(
-        texts: List[str],
+    texts: List[str],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Fit a CountVectorizer on the provided texts and return word counts + vocabulary.
-
-    Args:
-        texts: List of document strings (Wikipedia extract).
-
-    Returns:
-        counts: Array of word counts, shape (vocab_size,)
-        vocab: Array of vocabulary terms, shape (vocab_size,)
+    Fit a CountVectorizer on the provided texts and return word counts and vocabulary.
     """
+    if not texts:
+        return np.array([]), np.array([])
     vectorizer = CountVectorizer(stop_words="english")
     document_term_matrix = vectorizer.fit_transform(texts)
     word_counts = np.asarray(document_term_matrix.sum(axis=0)).ravel()
@@ -24,7 +19,9 @@ def vectorize_counts(
     return word_counts, vocabulary
 
 
-def to_freq_dict(word_counts: np.ndarray, vocabulary: np.ndarray) -> Dict[str, Dict[str, float]]:
+def to_freq_dict(
+    word_counts: np.ndarray, vocabulary: np.ndarray
+) -> Dict[str, Dict[str, float]]:
     """
     Convert word counts into {word: {"count": int, "percent": float}}.
     """
@@ -35,27 +32,30 @@ def to_freq_dict(word_counts: np.ndarray, vocabulary: np.ndarray) -> Dict[str, D
             "count": int(word_counts[i]),
             "percent": (word_counts[i] / total_count) * 100.0,
         }
-        for i in order if word_counts[i] > 0
+        for i in order
+        if word_counts[i] > 0
     }
 
 
 def apply_ignore_list(
-        word_counts: np.ndarray,
-        vocabulary: np.ndarray,
-        ignore_list: Iterable[str],
+    word_counts: np.ndarray,
+    vocabulary: np.ndarray,
+    ignore_list: Iterable[str],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Remove words in the ignore list from counts + vocabulary.
+    Remove words in the ignore list from counts and vocabulary.
     """
     ignore_set = {word.lower() for word in ignore_list}
-    keep_mask = np.array([word.lower() not in ignore_set for word in vocabulary], dtype=bool)
+    keep_mask = np.array(
+        [word.lower() not in ignore_set for word in vocabulary], dtype=bool
+    )
     return word_counts[keep_mask], vocabulary[keep_mask]
 
 
 def apply_percentile(
-        word_counts: np.ndarray,
-        vocabulary: np.ndarray,
-        percentile: int,
+    word_counts: np.ndarray,
+    vocabulary: np.ndarray,
+    percentile: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Keep only words whose count >= the given percentile cutoff.

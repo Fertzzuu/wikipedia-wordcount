@@ -9,7 +9,7 @@ import httpx
 class WikiClient:
     """
     Minimal async MediaWiki client.
-    - query(): async generator over paginated 'query' chunks
+    - _query(): async generator over paginated 'query' chunks
     - crawl_extracts_stream(): stream extracts as soon as available
     """
 
@@ -28,7 +28,7 @@ class WikiClient:
         self._user_agent = user_agent
         self._timeout = timeout
 
-    async def query(self, params: Dict) -> AsyncIterator[Dict]:
+    async def _query(self, params: Dict) -> AsyncIterator[Dict]:
         """
         Yields each 'query' object from the MediaWiki API,
         following 'continue' pagination until exhausted.
@@ -93,7 +93,7 @@ class WikiClient:
             extract_already_emitted = False
             collected_links: List[str] = []
 
-            async for payload in self.query(base_params):
+            async for payload in self._query(base_params):
                 pages = payload.get("pages") or []
                 if not pages:
                     continue
@@ -111,6 +111,7 @@ class WikiClient:
                     extract_text = page.get("extract") or ""
                     if extract_text:
                         yield extract_text
+                        visited_titles.add(current_title)
                         extract_already_emitted = True
 
                 if remaining_depth > 0:
@@ -126,7 +127,6 @@ class WikiClient:
 
                     for child_title in to_schedule:
                         if child_title not in visited_titles:
-                            visited_titles.add(child_title)
                             await pages_to_visit.put((child_title, remaining_depth - 1))
 
             pages_to_visit.task_done()
