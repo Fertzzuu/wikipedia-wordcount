@@ -119,4 +119,3 @@ python -m unittest discover tests -v
 - **Pydantic v2** — request/response models  
 - **unittest** — test framework  
 - **Docker Compose** — dev-friendly containerization  
-— do whatever you like, just don’t DDoS Wikipedia 🙂
