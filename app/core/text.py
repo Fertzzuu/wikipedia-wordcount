@@ -1,4 +1,3 @@
-# text_vec.py
 from __future__ import annotations
 from typing import Dict, Iterable, List, Tuple
 import numpy as np

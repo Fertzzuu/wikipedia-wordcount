@@ -1,16 +1,32 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
+import numpy as np
 from fastapi import APIRouter, Depends, Query
 from app.di import get_wiki_client
 from app.clients.wiki import WikiClient
 from app.core.text import vectorize_counts, to_freq_dict, apply_ignore_list, apply_percentile
 from app.api.schemas import (
-    WordFrequencyResponse,
+    WordFrequencyResponse, KeywordsRequest,
 )
 
 router = APIRouter()
+
+
+async def _crawl_and_vectorize(
+        client: WikiClient,
+        article: str,
+        depth: int,
+        *,
+        stop_words: str | None = None,  # keep defaults; pass "english" if you want
+) -> Tuple[np.ndarray, np.ndarray]:
+    collected_extracts: List[str] = []
+    async for extract_text in client.crawl_extracts_stream(
+            article, depth, max_links_per_page=100
+    ):
+        collected_extracts.append(extract_text)
+    return vectorize_counts(collected_extracts)
 
 
 @router.get(
@@ -24,34 +40,27 @@ async def get_word_frequency(
         client: WikiClient = Depends(get_wiki_client),
 ):
     """Traverse Wikipedia articles up to `max_depth` and return word frequencies."""
-    collected_extracts: List[str] = []
 
-    async for extract_text in client.crawl_extracts_stream(
-            article, depth, max_links_per_page=100
-    ):
-        collected_extracts.append(extract_text)
-
-    word_counts, vocabulary = vectorize_counts(collected_extracts)
+    word_counts, vocabulary = _crawl_and_vectorize(client, article, depth)
     return to_freq_dict(word_counts, vocabulary)
 
 
-# @router.post(
-#     "/keywords",
-#     response_model=WordFrequencyResponse,
-#     summary="Filter word frequencies by ignore list and percentile",
-# )
-# async def post_keywords(
-#         body: KeywordsRequest,
-#         client: WikiClient = Depends(get_wiki_client),
-# ):
-#     """Same as `/word-frequency`, but excludes `ignore_list` and keeps words
-#     whose counts are at/above the given `percentile`.
-#     """
-#     result: Dict[str, Dict[str, float]] = await compute_keywords(
-#         client,
-#         body.article,
-#         body.depth,
-#         body.ignore_list,
-#         body.percentile,
-#     )
-#     return result
+@router.post("/keywords", response_model=WordFrequencyResponse)
+async def post_keywords(
+        request: KeywordsRequest,
+        wiki_client: WikiClient = Depends(get_wiki_client),
+):
+    word_counts, vocabulary = await _crawl_and_vectorize(
+        wiki_client, request.article, request.depth
+    )
+
+    if request.ignore_list:
+        word_counts, vocabulary = apply_ignore_list(
+            word_counts, vocabulary, request.ignore_list
+        )
+
+    word_counts, vocabulary = apply_percentile(
+        word_counts, vocabulary, request.percentile
+    )
+
+    return to_freq_dict(word_counts, vocabulary)
