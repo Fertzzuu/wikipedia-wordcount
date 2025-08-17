@@ -1,4 +1,3 @@
-# main.py
 from __future__ import annotations
 
 import asyncio
@@ -67,5 +66,4 @@ async def healthcheck() -> dict:
     return {"status": "ok"}
 
 
-# Mount your API routes
 app.include_router(api_router)
